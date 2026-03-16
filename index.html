@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestión PCs Aula</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        body { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .modal-active { transform: scale(1); opacity: 1; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans">
+
+    <header class="bg-indigo-700 text-white p-5 shadow-lg sticky top-0 z-30">
+        <div class="flex justify-between items-center max-w-lg mx-auto">
+            <h1 class="text-xl font-bold tracking-tight">💻 Control de Equipos</h1>
+            <button onclick="cargarDatos()" id="refresh-btn" class="bg-indigo-600 p-2 rounded-full active:rotate-180 transition-transform duration-500">
+                🔄
+            </button>
+        </div>
+    </header>
+
+    <main id="contenedor-pcs" class="p-4 grid grid-cols-1 gap-4 max-w-lg mx-auto pb-28">
+        <div class="text-center py-20 text-slate-400 italic">Conectando con la base de datos...</div>
+    </main>
+
+    <div id="modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-40">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <h2 id="modal-titulo" class="text-2xl font-black mb-6 text-indigo-700 text-center"></h2>
+            
+            <form id="formPrestamo" class="space-y-4">
+                <input type="hidden" id="pc-seleccionado">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase ml-1 mb-1 text-left">Profesor/a</label>
+                    <input type="text" id="profe" placeholder="Nombre del docente" required class="w-full bg-slate-50 border-none ring-1 ring-slate-200 p-4 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase ml-1 mb-1 text-left">Alumno/a</label>
+                    <input type="text" id="alumno" placeholder="Nombre del alumno" required class="w-full bg-slate-50 border-none ring-1 ring-slate-200 p-4 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase ml-1 mb-1 text-left">Grupo</label>
+                    <input type="text" id="grupo" placeholder="Ej: 4º ESO B" required class="w-full bg-slate-50 border-none ring-1 ring-slate-200 p-4 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="cerrarModal()" class="flex-1 py-4 text-slate-500 font-bold">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition-transform">
+                        Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-30">
+        <div class="max-w-lg mx-auto flex justify-around text-center">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Libres</p>
+                <p id="count-libres" class="text-2xl font-black text-green-500">--</p>
+            </div>
+            <div class="w-px bg-slate-200 h-10"></div>
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase">En Uso</p>
+                <p id="count-uso" class="text-2xl font-black text-red-500">--</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // TU URL ACTUALIZADA
+        const API_URL = "https://script.google.com/macros/s/AKfycbwKuivH2f3wmUjbdnVrCHEgTvaJzpP2n15889jKm3z5af5hD0OAGZKAHyI2kbQ9qvt6/exec";
+
+        async function cargarDatos() {
+            const btn = document.getElementById('refresh-btn');
+            btn.classList.add('rotate-180');
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                renderizarPantalla(data);
+            } catch (error) {
+                console.error(error);
+                const lista = document.getElementById('contenedor-pcs');
+                lista.innerHTML = '<div class="text-red-500 text-center py-10">Error de conexión. Revisa el enlace de Google Script.</div>';
+            } finally {
+                setTimeout(() => btn.classList.remove('rotate-180'), 500);
+            }
+        }
+
+        function renderizarPantalla(pcs) {
+            const lista = document.getElementById('contenedor-pcs');
+            lista.innerHTML = '';
+            let libres = 0;
+
+            pcs.forEach(pc => {
+                const estaLibre = pc[1] === 'LIBRE';
+                if(estaLibre) libres++;
+
+                lista.innerHTML += `
+                    <div class="bg-white rounded-2xl p-5 card-shadow border-l-8 ${estaLibre ? 'border-green-500' : 'border-red-500'} active:scale-[0.98] transition-all">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-2xl font-black text-slate-800">${pc[0]}</h3>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase ${estaLibre ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                ${pc[1]}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4 text-left">
+                            <p class="text-sm"><span class="text-slate-400 font-medium">${estaLibre ? 'Último:' : 'Alumno:'}</span> <span class="font-bold text-slate-700">${pc[2]}</span></p>
+                            <p class="text-xs text-slate-400">Grupo: ${pc[3]} | Hora: ${pc[5]}</p>
+                        </div>
+
+                        <button onclick="${estaLibre ? `abrirModal('${pc[0]}')` : `devolver('${pc[0]}','${pc[2]}','${pc[3]}')`}" 
+                                class="w-full py-3 rounded-xl font-extrabold text-xs tracking-wider transition-colors ${estaLibre ? 'bg-indigo-50 text-indigo-600' : 'bg-orange-50 text-orange-600'}">
+                            ${estaLibre ? 'ASIGNAR EQUIPO' : 'REGISTRAR DEVOLUCIÓN'}
+                        </button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('count-libres').innerText = libres;
+            document.getElementById('count-uso').innerText = 8 - libres;
+        }
+
+        function abrirModal(id) {
+            document.getElementById('pc-seleccionado').value = id;
+            document.getElementById('modal-titulo').innerText = "Asignar " + id;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        document.getElementById('formPrestamo').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = e.submitter;
+            btn.disabled = true;
+            btn.innerText = "Guardando...";
+
+            const datos = {
+                accion: "PRESTAMO",
+                pc: document.getElementById('pc-seleccionado').value,
+                profe: document.getElementById('profe').value,
+                alumno: document.getElementById('alumno').value,
+                grupo: document.getElementById('grupo').value
+            };
+
+            await enviar(datos);
+            btn.disabled = false;
+            btn.innerText = "Confirmar";
+            cerrarModal();
+        };
+
+        async function devolver(id, alumno, grupo) {
+            if(confirm(`¿Confirmas que el alumno ${alumno} ha entregado el ${id}?`)) {
+                const profeRecibe = prompt("¿Qué profesor recibe el equipo?");
+                if(profeRecibe) {
+                    await enviar({
+                        accion: "DEVOLUCION",
+                        pc: id,
+                        alumno: alumno,
+                        grupo: grupo,
+                        profe: profeRecibe
+                    });
+                }
+            }
+        }
+
+        async function enviar(datos) {
+            document.body.style.opacity = "0.5";
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(datos)
+                });
+                setTimeout(cargarDatos, 1200);
+            } catch (error) {
+                alert("Error al enviar datos.");
+            } finally {
+                document.body.style.opacity = "1";
+            }
+        }
+
+        cargarDatos();
+    </script>
+</body>
+</html>

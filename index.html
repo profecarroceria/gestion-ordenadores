@@ -2,42 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión PCs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestión de Aula - Carrocería</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="bg-slate-100 min-h-screen pb-20">
 
-    <header class="bg-indigo-700 text-white p-6 shadow-lg text-center">
-        <h1 class="font-bold text-xl">Gestión de Equipos</h1>
-        <button onclick="cargarDatos()" class="mt-2 bg-indigo-800 px-6 py-2 rounded-full text-sm font-bold">ACTUALIZAR 🔄</button>
+    <header class="bg-indigo-700 text-white p-6 sticky top-0 z-30 shadow-lg text-center">
+        <h1 class="font-bold text-xl tracking-tight">Gestión de Equipos</h1>
+        <button onclick="cargarDatos()" class="mt-2 bg-indigo-800 hover:bg-indigo-900 px-6 py-2 rounded-full text-xs font-bold transition-all shadow-inner">
+            ACTUALIZAR ESTADO 🔄
+        </button>
     </header>
 
     <main id="contenedor-pcs" class="p-4 grid gap-4 max-w-md mx-auto">
-        <p class="text-center text-slate-500 mt-10 font-bold italic">Cargando equipos...</p>
+        <div class="flex justify-center mt-10">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-700"></div>
+        </div>
     </main>
 
-    <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h2 id="modal-titulo" class="text-xl font-bold mb-4 text-indigo-700 border-b pb-2"></h2>
+    <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-in-center">
+            <h2 id="modal-titulo" class="text-xl font-black mb-4 text-indigo-700 border-b pb-2 uppercase tracking-tighter"></h2>
             <form id="formPrestamo" class="space-y-4">
                 <input type="hidden" id="pc-seleccionado">
-                <input type="text" id="profe" placeholder="Profesor" required class="w-full p-3 border rounded-xl outline-indigo-500">
-                <input type="text" id="alumno" placeholder="Alumno" required class="w-full p-3 border rounded-xl outline-indigo-500">
-                <input type="text" id="grupo" placeholder="Grupo" required class="w-full p-3 border rounded-xl outline-indigo-500">
-                <textarea id="obs" placeholder="Observaciones (opcional)" class="w-full p-3 border rounded-xl h-20 outline-indigo-500"></textarea>
+                <input type="text" id="profe" placeholder="Nombre del Profesor" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                <input type="text" id="alumno" placeholder="Nombre del Alumno" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                <input type="text" id="grupo" placeholder="Grupo (ej: 1º CAR)" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                <textarea id="obs" placeholder="Observaciones: ¿Se lleva cargador? ¿Algún daño?" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
                 
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="cerrarModal()" class="flex-1 py-3 text-slate-400 font-bold">Cancelar</button>
-                    <button type="submit" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md">CONFIRMAR</button>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="cerrarModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">CANCELAR</button>
+                    <button type="submit" id="btn-confirmar" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">CONFIRMAR</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-        const API_URL = "TU_URL_AQUI"; 
+        // URL proporcionada
+        const API_URL = "https://script.google.com/macros/s/AKfycbxIphkg5SDUiN9X3Si3AMgvWJww2YgKU2K2bklNhIBQkrYIo76R5gKg7zSr-DFRMhAK/exec"; 
 
         async function cargarDatos() {
             try {
@@ -45,7 +49,11 @@
                 const data = await res.json();
                 renderizar(data);
             } catch (e) {
-                document.getElementById('contenedor-pcs').innerHTML = '<p class="text-center text-red-500 font-bold">⚠️ Error de conexión. Revisa la URL.</p>';
+                document.getElementById('contenedor-pcs').innerHTML = `
+                    <div class="bg-red-50 p-6 rounded-2xl border border-red-200 text-center">
+                        <p class="text-red-600 font-bold">Error de conexión</p>
+                        <p class="text-xs text-red-400 mt-1">Verifica que el script esté publicado para 'Cualquier persona'</p>
+                    </div>`;
             }
         }
 
@@ -54,16 +62,21 @@
             lista.innerHTML = '';
             pcs.forEach(pc => {
                 const libre = pc[1] === 'LIBRE';
+                const nombrePC = pc[0].replace("-", ""); // Aseguramos visualización sin guion
+                
                 lista.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border-l-8 ${libre ? 'border-green-500' : 'border-red-500'}">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border-l-[10px] ${libre ? 'border-green-500' : 'border-red-500'} transition-all active:scale-[0.98]">
                         <div class="flex justify-between items-center">
-                            <div>
-                                <h3 class="text-lg font-black text-slate-800">${pc[0]}</h3>
-                                <p class="text-sm font-medium ${libre ? 'text-green-600' : 'text-slate-500'}">${libre ? 'DISPONIBLE' : pc[2]}</p>
-                                ${pc[6] && pc[6] !== '-' ? `<p class="text-[10px] text-orange-600 font-bold mt-1 uppercase">⚠️ ${pc[6]}</p>` : ''}
+                            <div class="flex-1">
+                                <h3 class="text-xl font-black text-slate-800">${nombrePC}</h3>
+                                <p class="text-sm font-bold ${libre ? 'text-green-600' : 'text-slate-400'}">
+                                    ${libre ? 'DISPONIBLE' : '👤 ' + pc[2]}
+                                </p>
+                                ${!libre && pc[3] !== '-' ? `<p class="text-[11px] text-slate-400 font-medium italic">${pc[3]} | Prof: ${pc[4]}</p>` : ''}
+                                ${pc[6] && pc[6] !== '-' ? `<div class="bg-orange-50 text-orange-700 text-[10px] font-bold p-2 rounded-lg mt-2 border border-orange-100 italic">⚠️ ${pc[6]}</div>` : ''}
                             </div>
-                            <button onclick="${libre ? `abrirModal('${pc[0]}')` : `devolver('${pc[0]}','${pc[2]}')`}" 
-                                class="px-4 py-2 rounded-xl font-black text-[10px] tracking-widest ${libre ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            <button onclick="${libre ? `abrirModal('${nombrePC}')` : `devolver('${nombrePC}','${pc[2]}')`}" 
+                                class="ml-4 px-5 py-3 rounded-2xl font-black text-[10px] tracking-widest shadow-sm transition-colors ${libre ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}">
                                 ${libre ? 'ASIGNAR' : 'DEVOLVER'}
                             </button>
                         </div>
@@ -81,6 +94,10 @@
 
         document.getElementById('formPrestamo').onsubmit = async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('btn-confirmar');
+            btn.disabled = true;
+            btn.innerHTML = "PROCESANDO...";
+
             const datos = {
                 accion: "PRESTAMO",
                 pc: document.getElementById('pc-seleccionado').value,
@@ -89,23 +106,46 @@
                 grupo: document.getElementById('grupo').value,
                 obs: document.getElementById('obs').value || "-"
             };
-            cerrarModal();
+
             await enviar(datos);
+            e.target.reset();
+            btn.disabled = false;
+            btn.innerHTML = "CONFIRMAR";
+            cerrarModal();
         };
 
         async function devolver(id, alumno) {
-            const obs = prompt("OBSERVACIONES DE DEVOLUCIÓN:", "Ninguna");
+            const obs = prompt(`Observaciones de devolución para ${id} (ej: falta cargador, todo ok):`, "Todo correcto");
             if (obs !== null) {
-                await enviar({ accion: "DEVOLUCION", pc: id, alumno: alumno, profe: "-", grupo: "-", obs: obs });
+                await enviar({ 
+                    accion: "DEVOLUCION", 
+                    pc: id, 
+                    alumno: alumno, 
+                    profe: "-", 
+                    grupo: "-", 
+                    obs: obs 
+                });
             }
         }
 
         async function enviar(datos) {
-            document.getElementById('contenedor-pcs').innerHTML = '<p class="text-center text-indigo-500 mt-10 font-bold animate-pulse">PROCESANDO...</p>';
-            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(datos) });
-            setTimeout(cargarDatos, 2000);
+            document.body.style.opacity = "0.6";
+            // Usamos 'no-cors' porque Google Apps Script no permite CORS directo, pero procesa el POST
+            try {
+                await fetch(API_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify(datos) 
+                });
+                // Espera breve para dar tiempo al servidor a escribir antes de recargar
+                setTimeout(cargarDatos, 1500);
+            } catch (err) {
+                alert("Error al enviar. Revisa la conexión.");
+            }
+            document.body.style.opacity = "1";
         }
 
+        // Carga inicial
         cargarDatos();
     </script>
 </body>

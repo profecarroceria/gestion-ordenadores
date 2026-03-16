@@ -8,48 +8,62 @@
 </head>
 <body class="bg-slate-100 min-h-screen pb-20">
 
-    <header class="bg-indigo-700 text-white p-6 sticky top-0 z-30 shadow-lg text-center font-bold text-xl">
-        Gestión de Equipos (Sin Guiones)
-        <button onclick="cargarDatos()" class="ml-4">🔄</button>
+    <header class="bg-indigo-700 text-white p-6 sticky top-0 z-30 shadow-lg text-center">
+        <h1 class="font-bold text-xl">Gestión de Equipos</h1>
+        <button onclick="cargarDatos()" class="mt-2 text-sm bg-indigo-800 px-4 py-1 rounded-full">Actualizar 🔄</button>
     </header>
 
-    <main id="contenedor-pcs" class="p-4 grid gap-4 max-w-md mx-auto"></main>
+    <main id="contenedor-pcs" class="p-4 grid gap-4 max-w-md mx-auto">
+        <p class="text-center text-slate-500 mt-10">Cargando datos...</p>
+    </main>
 
     <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-40">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <h2 id="modal-titulo" class="text-xl font-bold mb-4"></h2>
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h2 id="modal-titulo" class="text-xl font-bold mb-4 text-indigo-700"></h2>
             <form id="formPrestamo" class="space-y-3">
                 <input type="hidden" id="pc-seleccionado">
-                <input type="text" id="profe" placeholder="Profesor" required class="w-full p-3 border rounded-xl">
-                <input type="text" id="alumno" placeholder="Alumno" required class="w-full p-3 border rounded-xl">
-                <input type="text" id="grupo" placeholder="Grupo" required class="w-full p-3 border rounded-xl">
-                <textarea id="obs" placeholder="Observaciones (ej: sin cargador...)" class="w-full p-3 border rounded-xl h-20"></textarea>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold">Confirmar</button>
-                <button type="button" onclick="cerrarModal()" class="w-full text-slate-400 py-2">Cancelar</button>
+                <input type="text" id="profe" placeholder="Profesor" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                <input type="text" id="alumno" placeholder="Alumno" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                <input type="text" id="grupo" placeholder="Grupo" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                <textarea id="obs" placeholder="Observaciones (opcional)" class="w-full p-3 border rounded-xl h-20 focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="cerrarModal()" class="flex-1 py-3 text-slate-500 font-bold">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg">Confirmar</button>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
-        const API_URL = "TU_URL_DE_APPS_SCRIPT"; // <--- PEGA TU URL AQUÍ
+        // --- PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT ---
+        const API_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; 
 
         async function cargarDatos() {
-            const res = await fetch(API_URL);
-            const data = await res.json();
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                renderizar(data);
+            } catch (e) {
+                document.getElementById('contenedor-pcs').innerHTML = '<p class="text-center text-red-500">Error de conexión. Revisa la URL.</p>';
+            }
+        }
+
+        function renderizar(pcs) {
             const lista = document.getElementById('contenedor-pcs');
             lista.innerHTML = '';
-            data.forEach(pc => {
+            pcs.forEach(pc => {
                 const libre = pc[1] === 'LIBRE';
                 lista.innerHTML += `
                     <div class="bg-white p-4 rounded-xl shadow-sm border-l-8 ${libre ? 'border-green-500' : 'border-red-500'}">
                         <div class="flex justify-between items-center">
                             <div>
-                                <h3 class="text-lg font-bold">${pc[0]}</h3>
-                                <p class="text-sm text-slate-500">${libre ? 'Libre' : pc[2]}</p>
-                                ${pc[6] && pc[6] !== '-' ? `<p class="text-xs text-orange-600 font-bold mt-1">⚠️ ${pc[6]}</p>` : ''}
+                                <h3 class="text-lg font-bold text-slate-800">${pc[0]}</h3>
+                                <p class="text-sm ${libre ? 'text-green-600 font-medium' : 'text-slate-500'}">${libre ? 'Disponible' : pc[2]}</p>
+                                ${pc[6] && pc[6] !== '-' ? `<p class="text-xs text-orange-600 font-bold mt-1 italic">Obs: ${pc[6]}</p>` : ''}
                             </div>
                             <button onclick="${libre ? `abrirModal('${pc[0]}')` : `devolver('${pc[0]}','${pc[2]}')`}" 
-                                class="p-2 rounded-lg font-bold text-xs ${libre ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                class="px-4 py-2 rounded-lg font-bold text-xs shadow-sm ${libre ? 'bg-green-600 text-white' : 'bg-red-100 text-red-700'}">
                                 ${libre ? 'ASIGNAR' : 'DEVOLVER'}
                             </button>
                         </div>
@@ -67,6 +81,10 @@
 
         document.getElementById('formPrestamo').onsubmit = async (e) => {
             e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+
             await enviar({
                 accion: "PRESTAMO",
                 pc: document.getElementById('pc-seleccionado').value,
@@ -75,16 +93,22 @@
                 grupo: document.getElementById('grupo').value,
                 obs: document.getElementById('obs').value || "-"
             });
+
+            e.target.reset();
+            btn.disabled = false;
+            btn.innerText = "Confirmar";
             cerrarModal();
         };
 
         async function devolver(id, alumno) {
-            const obs = prompt("Observaciones de devolución:", "Ninguna");
-            if (obs !== null) await enviar({ accion: "DEVOLUCION", pc: id, alumno: alumno, obs: obs });
+            const obs = prompt("Observaciones de devolución (opcional):", "Ninguna");
+            if (obs !== null) {
+                await enviar({ accion: "DEVOLUCION", pc: id, alumno: alumno, profe: "-", grupo: "-", obs: obs });
+            }
         }
 
         async function enviar(datos) {
-            document.body.style.opacity = "0.5";
+            document.body.style.opacity = "0.6";
             await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(datos) });
             setTimeout(cargarDatos, 1500);
             document.body.style.opacity = "1";
